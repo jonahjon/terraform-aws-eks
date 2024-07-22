@@ -408,6 +408,12 @@ variable "desired_size" {
   default     = 1
 }
 
+variable "desired_capacity_type" {
+  description = "The unit of measurement for the value specified for desired_capacity"
+  type        = string
+  default     = "units"
+}
+
 variable "ignore_failed_scaling_activities" {
   description = "Whether to ignore failed Auto Scaling scaling activities while waiting for capacity."
   type        = bool
