@@ -395,7 +395,7 @@ resource "aws_launch_template" "this" {
   ]
 
   lifecycle {
-    ignore_changes = [tags]
+    ignore_changes = [tags, tag_specifications]
     create_before_destroy = true
   }
 }
