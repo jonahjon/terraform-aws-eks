@@ -1,5 +1,5 @@
 variable "create" {
-  description = "Controls if EKS resources should be created (affects nearly all resources)"
+  description = "Controls if resources should be created (affects nearly all resources)"
   type        = bool
   default     = true
 }
@@ -36,6 +36,36 @@ variable "cluster_enabled_log_types" {
   description = "A list of the desired control plane logs to enable. For more information, see Amazon EKS Control Plane Logging documentation (https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html)"
   type        = list(string)
   default     = ["audit", "api", "authenticator"]
+}
+
+variable "authentication_mode" {
+  description = "The authentication mode for the cluster. Valid values are `CONFIG_MAP`, `API` or `API_AND_CONFIG_MAP`"
+  type        = string
+  default     = "API_AND_CONFIG_MAP"
+}
+
+variable "cluster_compute_config" {
+  description = "Configuration block for the cluster compute configuration"
+  type        = any
+  default     = {}
+}
+
+variable "cluster_upgrade_policy" {
+  description = "Configuration block for the cluster upgrade policy"
+  type        = any
+  default     = {}
+}
+
+variable "cluster_remote_network_config" {
+  description = "Configuration block for the cluster remote network configuration"
+  type        = any
+  default     = {}
+}
+
+variable "cluster_zonal_shift_config" {
+  description = "Configuration block for the cluster zonal shift"
+  type        = any
+  default     = {}
 }
 
 variable "cluster_additional_security_group_ids" {
@@ -77,7 +107,7 @@ variable "cluster_endpoint_public_access_cidrs" {
 variable "cluster_ip_family" {
   description = "The IP family used to assign Kubernetes pod and service addresses. Valid values are `ipv4` (default) and `ipv6`. You can only specify an IP family when you create a cluster, changing this value will force a new cluster to be created"
   type        = string
-  default     = null
+  default     = "ipv4"
 }
 
 variable "cluster_service_ipv4_cidr" {
@@ -130,6 +160,29 @@ variable "cluster_timeouts" {
   default     = {}
 }
 
+# TODO - hard code to false on next breaking change
+variable "bootstrap_self_managed_addons" {
+  description = "Indicates whether or not to bootstrap self-managed addons after the cluster has been created"
+  type        = bool
+  default     = null
+}
+
+################################################################################
+# Access Entry
+################################################################################
+
+variable "access_entries" {
+  description = "Map of access entries to add to the cluster"
+  type        = any
+  default     = {}
+}
+
+variable "enable_cluster_creator_admin_permissions" {
+  description = "Indicates whether or not to add the cluster creator (the identity used by Terraform) as an administrator via access entry"
+  type        = bool
+  default     = false
+}
+
 ################################################################################
 # KMS Key
 ################################################################################
@@ -153,15 +206,15 @@ variable "kms_key_deletion_window_in_days" {
 }
 
 variable "enable_kms_key_rotation" {
-  description = "Specifies whether key rotation is enabled. Defaults to `true`"
+  description = "Specifies whether key rotation is enabled"
   type        = bool
   default     = true
 }
 
 variable "kms_key_enable_default_policy" {
-  description = "Specifies whether to enable the default key policy. Defaults to `false`"
+  description = "Specifies whether to enable the default key policy"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "kms_key_owners" {
@@ -224,6 +277,12 @@ variable "cloudwatch_log_group_retention_in_days" {
 
 variable "cloudwatch_log_group_kms_key_id" {
   description = "If a KMS Key ARN is set, this key will be used to encrypt the corresponding log group. Please be sure that the KMS Key has an appropriate key policy (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/encrypt-log-data-kms.html)"
+  type        = string
+  default     = null
+}
+
+variable "cloudwatch_log_group_class" {
+  description = "Specified the log class of the log group. Possible values are: `STANDARD` or `INFREQUENT_ACCESS`"
   type        = string
   default     = null
 }
@@ -348,6 +407,12 @@ variable "node_security_group_tags" {
   default     = {}
 }
 
+variable "enable_efa_support" {
+  description = "Determines whether to enable Elastic Fabric Adapter (EFA) support"
+  type        = bool
+  default     = false
+}
+
 ################################################################################
 # IRSA
 ################################################################################
@@ -381,7 +446,7 @@ variable "custom_oidc_thumbprints" {
 ################################################################################
 
 variable "create_iam_role" {
-  description = "Determines whether a an IAM role is created or to use an existing IAM role"
+  description = "Determines whether an IAM role is created for the cluster"
   type        = bool
   default     = true
 }
@@ -405,7 +470,7 @@ variable "iam_role_use_name_prefix" {
 }
 
 variable "iam_role_path" {
-  description = "Cluster IAM role path"
+  description = "The IAM role path"
   type        = string
   default     = null
 }
@@ -428,12 +493,11 @@ variable "iam_role_additional_policies" {
   default     = {}
 }
 
-# TODO - hopefully this can be removed once the AWS endpoint is named properly in China
-# https://github.com/terraform-aws-modules/terraform-aws-eks/issues/1904
-variable "cluster_iam_role_dns_suffix" {
-  description = "Base DNS domain name for the current partition (e.g., amazonaws.com in AWS Commercial, amazonaws.com.cn in AWS China)"
-  type        = string
-  default     = null
+# TODO - will be removed in next breaking change; user can add the policy on their own when needed
+variable "enable_security_groups_for_pods" {
+  description = "Determines whether to add the necessary IAM permission policy for security groups for pods"
+  type        = bool
+  default     = true
 }
 
 variable "iam_role_tags" {
@@ -473,9 +537,15 @@ variable "cluster_encryption_policy_tags" {
 }
 
 variable "dataplane_wait_duration" {
-  description = "Duration to wait after the EKS cluster has become active before creating the dataplane components (EKS managed nodegroup(s), self-managed nodegroup(s), Fargate profile(s))"
+  description = "Duration to wait after the EKS cluster has become active before creating the dataplane components (EKS managed node group(s), self-managed node group(s), Fargate profile(s))"
   type        = string
   default     = "30s"
+}
+
+variable "enable_auto_mode_custom_tags" {
+  description = "Determines whether to enable permissions for custom tags resources created by EKS Auto Mode"
+  type        = bool
+  default     = true
 }
 
 ################################################################################
@@ -501,6 +571,58 @@ variable "cluster_addons_timeouts" {
 variable "cluster_identity_providers" {
   description = "Map of cluster identity provider configurations to enable for the cluster. Note - this is different/separate from IRSA"
   type        = any
+  default     = {}
+}
+
+################################################################################
+# EKS Auto Node IAM Role
+################################################################################
+
+variable "create_node_iam_role" {
+  description = "Determines whether an EKS Auto node IAM role is created"
+  type        = bool
+  default     = true
+}
+
+variable "node_iam_role_name" {
+  description = "Name to use on the EKS Auto node IAM role created"
+  type        = string
+  default     = null
+}
+
+variable "node_iam_role_use_name_prefix" {
+  description = "Determines whether the EKS Auto node IAM role name (`node_iam_role_name`) is used as a prefix"
+  type        = bool
+  default     = true
+}
+
+variable "node_iam_role_path" {
+  description = "The EKS Auto node IAM role path"
+  type        = string
+  default     = null
+}
+
+variable "node_iam_role_description" {
+  description = "Description of the EKS Auto node IAM role"
+  type        = string
+  default     = null
+}
+
+variable "node_iam_role_permissions_boundary" {
+  description = "ARN of the policy that is used to set the permissions boundary for the EKS Auto node IAM role"
+  type        = string
+  default     = null
+}
+
+variable "node_iam_role_additional_policies" {
+  description = "Additional policies to be added to the EKS Auto node IAM role"
+  type        = map(string)
+  default     = {}
+}
+
+variable "node_iam_role_tags" {
+  description = "A map of additional tags to add to the EKS Auto node IAM role created"
+  type        = map(string)
   default     = {}
 }
 
@@ -556,56 +678,4 @@ variable "putin_khuylo" {
   description = "Do you agree that Putin doesn't respect Ukrainian sovereignty and territorial integrity? More info: https://en.wikipedia.org/wiki/Putin_khuylo!"
   type        = bool
   default     = true
-}
-
-################################################################################
-# aws-auth configmap
-################################################################################
-
-variable "manage_aws_auth_configmap" {
-  description = "Determines whether to manage the aws-auth configmap"
-  type        = bool
-  default     = false
-}
-
-variable "create_aws_auth_configmap" {
-  description = "Determines whether to create the aws-auth configmap. NOTE - this is only intended for scenarios where the configmap does not exist (i.e. - when using only self-managed node groups). Most users should use `manage_aws_auth_configmap`"
-  type        = bool
-  default     = false
-}
-
-variable "aws_auth_node_iam_role_arns_non_windows" {
-  description = "List of non-Windows based node IAM role ARNs to add to the aws-auth configmap"
-  type        = list(string)
-  default     = []
-}
-
-variable "aws_auth_node_iam_role_arns_windows" {
-  description = "List of Windows based node IAM role ARNs to add to the aws-auth configmap"
-  type        = list(string)
-  default     = []
-}
-
-variable "aws_auth_fargate_profile_pod_execution_role_arns" {
-  description = "List of Fargate profile pod execution role ARNs to add to the aws-auth configmap"
-  type        = list(string)
-  default     = []
-}
-
-variable "aws_auth_roles" {
-  description = "List of role maps to add to the aws-auth configmap"
-  type        = list(any)
-  default     = []
-}
-
-variable "aws_auth_users" {
-  description = "List of user maps to add to the aws-auth configmap"
-  type        = list(any)
-  default     = []
-}
-
-variable "aws_auth_accounts" {
-  description = "List of account maps to add to the aws-auth configmap"
-  type        = list(any)
-  default     = []
 }
