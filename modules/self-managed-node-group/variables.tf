@@ -451,6 +451,12 @@ variable "context" {
   default     = null
 }
 
+variable "desired_capacity_type" {
+  description = "The unit of measurement for the value specified for desired_capacity"
+  type        = string
+  default     = "units"
+}
+
 variable "capacity_rebalance" {
   description = "Indicates whether capacity rebalance is enabled"
   type        = bool
